@@ -18,13 +18,17 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from openai import AsyncOpenAI
 
-from shared.schemas.messages import OracleRequest
+from shared.schemas.messages import OracleRequest, ChatMessage
 from src.redactor.redactor import redact
-from src.router.router import route
+from src.router.router import route_fast, route_intelligent
 from src.prompt_coach.coach import compress
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 log = logging.getLogger("oracle")
+
+# ── Oracle system prompt ─────────────────────────────────────────────────────
+_SYSTEM_PROMPT_PATH = Path(__file__).resolve().parents[1] / "config" / "system_prompt.txt"
+ORACLE_SYSTEM_PROMPT = _SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip() if _SYSTEM_PROMPT_PATH.exists() else ""
 
 # ── Client pool ──────────────────────────────────────────────────────────────
 def _make_client(base_url: str, api_key: str) -> AsyncOpenAI:
@@ -81,16 +85,23 @@ async def chat_completions(req: OracleRequest, request: Request):
     redacted = redact(req.messages)
     log.info(f"PII detected: {redacted.pii_detected}")
 
-    # 2. Route
-    decision = route(redacted.messages, pii_detected=redacted.pii_detected)
+    # 2. Route — fast-path first, then ask the oracle model if needed
+    decision = route_fast(redacted.messages, pii_detected=redacted.pii_detected)
+    if decision is None:
+        decision = await route_intelligent(redacted.messages, ORACLE_CLIENT, pii_detected=redacted.pii_detected)
     log.info(f"Routing → {decision.target} / {decision.model} ({decision.reason})")
 
-    # 3. Optionally compress before cloud
+    # 3. Inject oracle system prompt for self-handled requests
     messages = redacted.messages
+    if decision.target == "self" and ORACLE_SYSTEM_PROMPT:
+        non_system = [m for m in messages if m.role != "system"]
+        messages = [ChatMessage(role="system", content=ORACLE_SYSTEM_PROMPT)] + non_system
+
+    # 4. Optionally compress before cloud
     if decision.target == "cloud" and CLOUD_ENABLED:
         messages = await compress(messages, ORACLE_CLIENT)
 
-    # 4. Pick client
+    # 5. Pick client
     client = CLIENT_MAP[decision.target]
     if client is None:
         return JSONResponse(
