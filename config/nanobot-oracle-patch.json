@@ -1,0 +1,14 @@
+{
+  "providers": {
+    "custom": {
+      "apiKey": "no-key",
+      "apiBase": "http://localhost:9000/v1"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": "oracle",
+      "provider": "custom"
+    }
+  }
+}
