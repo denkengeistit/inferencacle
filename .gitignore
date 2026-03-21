@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.gguf
+models/
+.venv/
+node_modules/
+dist/
+.DS_Store
+*.swp
+*~
