@@ -216,6 +216,14 @@ class MatrixConfig(Base):
     allow_room_mentions: bool = False
 
 
+class OpenAIAPIConfig(Base):
+    """OpenAI-compatible API channel — exposes the agent as an inference provider."""
+
+    enabled: bool = False
+    port: int = 9000
+    allow_from: list[str] = Field(default_factory=lambda: ["*"])
+
+
 class ChannelsConfig(Base):
     """Configuration for chat channels."""
 
@@ -231,6 +239,7 @@ class ChannelsConfig(Base):
     slack: SlackConfig = Field(default_factory=SlackConfig)
     qq: QQConfig = Field(default_factory=QQConfig)
     matrix: MatrixConfig = Field(default_factory=MatrixConfig)
+    openai_api: OpenAIAPIConfig = Field(default_factory=OpenAIAPIConfig)
 
 
 class AgentDefaults(Base):
@@ -347,6 +356,29 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
+class OracleConfig(Base):
+    """Oracle — intelligent routing and PII redaction."""
+
+    enabled: bool = False
+
+    # The oracle's own model (runs on local hardware, e.g. iMac M4)
+    local_model: str = "qwen3-vl:8b"
+    local_api_base: str = "http://localhost:11434/v1"
+    local_api_key: str = "no-key"
+
+    # Heavy local model for escalation (e.g. Mac Mini M4 Pro)
+    heavy_model: str = "zai-org/glm-4.7-flash"
+    heavy_api_base: str = "http://localhost:8000/v1"
+    heavy_api_key: str = "no-key"
+
+    # Routing
+    complexity_threshold: int = 800  # tokens above this → auto-escalate
+
+    # PII redaction
+    redaction_enabled: bool = True
+    redaction_entities: str = "PERSON,EMAIL_ADDRESS,PHONE_NUMBER,CREDIT_CARD,US_SSN"
+
+
 class Config(BaseSettings):
     """Root configuration for nanobot."""
 
@@ -355,6 +387,7 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    oracle: OracleConfig = Field(default_factory=OracleConfig)
 
     @property
     def workspace_path(self) -> Path:

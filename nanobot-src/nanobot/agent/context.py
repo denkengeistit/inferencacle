@@ -58,9 +58,15 @@ Skills with available="false" need dependencies installed first - you can try in
         system = platform.system()
         runtime = f"{'macOS' if system == 'Darwin' else system} {platform.machine()}, Python {platform.python_version()}"
 
+        # Load oracle identity if available
+        oracle_identity = ""
+        oracle_prompt_path = Path(__file__).resolve().parents[1] / "oracle" / "system_prompt.txt"
+        if oracle_prompt_path.exists():
+            oracle_identity = "\n\n## Oracle\n\n" + oracle_prompt_path.read_text(encoding="utf-8").strip()
+
         return f"""# nanobot 🐈
 
-You are nanobot, a helpful AI assistant.
+You are nanobot, a helpful AI assistant.{oracle_identity}
 
 ## Runtime
 {runtime}
