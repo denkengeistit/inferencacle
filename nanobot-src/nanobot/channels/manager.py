@@ -149,6 +149,17 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Matrix channel not available: {}", e)
 
+        # OpenAI API channel
+        if getattr(self.config.channels, 'openai_api', None) and self.config.channels.openai_api.enabled:
+            try:
+                from nanobot.channels.openai_api import OpenAIAPIChannel
+                self.channels["openai_api"] = OpenAIAPIChannel(
+                    self.config.channels.openai_api, self.bus
+                )
+                logger.info("OpenAI API channel enabled on port {}", self.config.channels.openai_api.port)
+            except ImportError as e:
+                logger.warning("OpenAI API channel not available: {}", e)
+
         self._validate_allow_from()
 
     def _validate_allow_from(self) -> None:

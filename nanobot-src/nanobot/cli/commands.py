@@ -227,13 +227,6 @@ def _make_provider(config: Config):
             redaction_enabled=o.redaction_enabled,
             redaction_entities=o.redaction_entities,
         )
-        from nanobot.providers.base import GenerationSettings
-        defaults = config.agents.defaults
-        provider.generation = GenerationSettings(
-            temperature=defaults.temperature,
-            max_tokens=defaults.max_tokens,
-            reasoning_effort=defaults.reasoning_effort,
-        )
         return provider
 
     # Custom: direct OpenAI-compatible endpoint, bypasses LiteLLM

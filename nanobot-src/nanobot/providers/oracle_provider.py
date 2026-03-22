@@ -22,6 +22,8 @@ from nanobot.oracle.redactor import redact_messages
 from nanobot.oracle.router import route_fast, route_intelligent
 from nanobot.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 
+# Note: this fork doesn't have GenerationSettings or tool_choice in chat()
+
 
 class OracleProvider(LLMProvider):
     """
@@ -66,7 +68,6 @@ class OracleProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
-        tool_choice: str | dict[str, Any] | None = None,
     ) -> LLMResponse:
         # 1. Redact PII
         redaction = redact_messages(
@@ -112,7 +113,7 @@ class OracleProvider(LLMProvider):
         if reasoning_effort:
             kwargs["reasoning_effort"] = reasoning_effort
         if tools:
-            kwargs.update(tools=tools, tool_choice=tool_choice or "auto")
+            kwargs.update(tools=tools, tool_choice="auto")
 
         try:
             return self._parse(await client.chat.completions.create(**kwargs))
