@@ -248,8 +248,13 @@ class OpenAIAPIChannel(BaseChannel):
                     # Re-add for the real response
                     self._pending[request_id] = future
                     return
-                # Strip model control tokens (e.g. GLM's <|begin_of_box|>)
-                clean = re.sub(r'<\|[^|]*\|>', '', msg.content or '').strip()
+                # Strip model control tokens and tool-call markup
+                clean = msg.content or ''
+                clean = re.sub(r'<\|[^|]*\|>', '', clean)  # GLM control tokens
+                clean = re.sub(r'<arg_key>.*?</arg_key>', '', clean)  # tool arg keys
+                clean = re.sub(r'<arg_value>.*?</arg_value>', '', clean, flags=re.DOTALL)  # tool arg values
+                clean = re.sub(r'\bmessage\b\s*$', '', clean, flags=re.MULTILINE)  # bare "message" tool name
+                clean = clean.strip()
                 future.set_result(clean)
         else:
             logger.debug("OpenAI API channel: no pending request for chat_id={}", msg.chat_id)
