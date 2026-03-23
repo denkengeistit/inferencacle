@@ -93,14 +93,14 @@ class OracleProvider(LLMProvider):
                 pii_detected=redaction.pii_detected,
             )
 
-        # 3. Pick client and model
+        # 3. Pick client and model — oracle controls model selection, ignores hints
         if decision.escalate:
             client = self._heavy_client
-            target_model = model or self.heavy_model
+            target_model = self.heavy_model
             logger.info("Oracle routing → heavy ({}: {})", target_model, decision.reason)
         else:
             client = self._local_client
-            target_model = model or self.local_model
+            target_model = self.local_model
             logger.info("Oracle routing → self ({}: {})", target_model, decision.reason)
 
         # 4. Forward to backend

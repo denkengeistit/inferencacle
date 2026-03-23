@@ -9,9 +9,8 @@ This is *not* a provider that nanobot uses — it's a channel that lets
 nanobot act AS a provider to the outside world.
 """
 
-from __future__ import annotations
-
 import asyncio
+import re
 import time
 import uuid
 from typing import Any
@@ -50,7 +49,7 @@ class OpenAIAPIChannel(BaseChannel):
         """Start the FastAPI server."""
         import uvicorn
         from fastapi import FastAPI, Request
-        from fastapi.responses import JSONResponse
+        from fastapi.responses import JSONResponse, StreamingResponse
         from fastapi.middleware.cors import CORSMiddleware
 
         app = FastAPI(title="Inferencacle — OpenAI-compatible API")
@@ -141,12 +140,54 @@ class OpenAIAPIChannel(BaseChannel):
                     content={"error": {"message": "Agent response timed out", "type": "timeout_error"}},
                 )
 
-            # Format as OpenAI-compatible response
             completion_id = f"chatcmpl-{request_id[:12]}"
+            created = int(time.time())
+
+            if stream:
+                # SSE streaming — send the full response as chunks
+                import json as _json
+
+                async def generate_sse():
+                    # Send content in a single chunk (agent doesn't stream internally)
+                    chunk = {
+                        "id": completion_id,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": "inferencacle",
+                        "choices": [{
+                            "index": 0,
+                            "delta": {"role": "assistant", "content": response_text},
+                            "finish_reason": None,
+                        }],
+                    }
+                    yield f"data: {_json.dumps(chunk)}\n\n"
+
+                    # Send done chunk
+                    done_chunk = {
+                        "id": completion_id,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": "inferencacle",
+                        "choices": [{
+                            "index": 0,
+                            "delta": {},
+                            "finish_reason": "stop",
+                        }],
+                    }
+                    yield f"data: {_json.dumps(done_chunk)}\n\n"
+                    yield "data: [DONE]\n\n"
+
+                return StreamingResponse(
+                    generate_sse(),
+                    media_type="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+                )
+
+            # Non-streaming response
             return {
                 "id": completion_id,
                 "object": "chat.completion",
-                "created": int(time.time()),
+                "created": created,
                 "model": "inferencacle",
                 "choices": [
                     {
@@ -207,7 +248,9 @@ class OpenAIAPIChannel(BaseChannel):
                     # Re-add for the real response
                     self._pending[request_id] = future
                     return
-                future.set_result(msg.content or "")
+                # Strip model control tokens (e.g. GLM's <|begin_of_box|>)
+                clean = re.sub(r'<\|[^|]*\|>', '', msg.content or '').strip()
+                future.set_result(clean)
         else:
             logger.debug("OpenAI API channel: no pending request for chat_id={}", msg.chat_id)
 
