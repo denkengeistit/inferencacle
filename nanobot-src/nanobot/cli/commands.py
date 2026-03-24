@@ -212,23 +212,6 @@ def _make_provider(config: Config):
     if provider_name == "openai_codex" or model.startswith("openai-codex/"):
         return OpenAICodexProvider(default_model=model)
 
-    # Oracle: intelligent routing + PII redaction
-    if provider_name == "oracle" or config.oracle.enabled:
-        from nanobot.providers.oracle_provider import OracleProvider
-        o = config.oracle
-        provider = OracleProvider(
-            local_model=o.local_model,
-            local_api_base=o.local_api_base,
-            local_api_key=o.local_api_key,
-            heavy_model=o.heavy_model,
-            heavy_api_base=o.heavy_api_base,
-            heavy_api_key=o.heavy_api_key,
-            complexity_threshold=o.complexity_threshold,
-            redaction_enabled=o.redaction_enabled,
-            redaction_entities=o.redaction_entities,
-        )
-        return provider
-
     # Custom: direct OpenAI-compatible endpoint, bypasses LiteLLM
     if provider_name == "custom":
         return CustomProvider(

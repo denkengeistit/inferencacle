@@ -69,27 +69,6 @@ class DiscordConfig(Base):
     group_policy: Literal["mention", "open"] = "mention"
 
 
-class MatrixConfig(Base):
-    """Matrix (Element) channel configuration."""
-
-    enabled: bool = False
-    homeserver: str = "https://matrix.org"
-    access_token: str = ""
-    user_id: str = ""  # @bot:matrix.org
-    device_id: str = ""
-    e2ee_enabled: bool = True  # Enable Matrix E2EE support (encryption + encrypted room handling).
-    sync_stop_grace_seconds: int = (
-        2  # Max seconds to wait for sync_forever to stop gracefully before cancellation fallback.
-    )
-    max_media_bytes: int = (
-        20 * 1024 * 1024
-    )  # Max attachment size accepted for Matrix media handling (inbound + outbound).
-    allow_from: list[str] = Field(default_factory=list)
-    group_policy: Literal["open", "mention", "allowlist"] = "open"
-    group_allow_from: list[str] = Field(default_factory=list)
-    allow_room_mentions: bool = False
-
-
 class EmailConfig(Base):
     """Email channel configuration (IMAP inbound + SMTP outbound)."""
 
@@ -356,29 +335,6 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
-class OracleConfig(Base):
-    """Oracle — intelligent routing and PII redaction."""
-
-    enabled: bool = False
-
-    # The oracle's own model (runs on local hardware, e.g. iMac M4)
-    local_model: str = "qwen3-vl:8b"
-    local_api_base: str = "http://localhost:11434/v1"
-    local_api_key: str = "no-key"
-
-    # Heavy local model for escalation (e.g. Mac Mini M4 Pro)
-    heavy_model: str = "zai-org/glm-4.7-flash"
-    heavy_api_base: str = "http://localhost:8000/v1"
-    heavy_api_key: str = "no-key"
-
-    # Routing
-    complexity_threshold: int = 800  # tokens above this → auto-escalate
-
-    # PII redaction
-    redaction_enabled: bool = True
-    redaction_entities: str = "PERSON,EMAIL_ADDRESS,PHONE_NUMBER,CREDIT_CARD,US_SSN"
-
-
 class Config(BaseSettings):
     """Root configuration for nanobot."""
 
@@ -387,7 +343,6 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
-    oracle: OracleConfig = Field(default_factory=OracleConfig)
 
     @property
     def workspace_path(self) -> Path:
